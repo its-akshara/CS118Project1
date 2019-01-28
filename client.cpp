@@ -5,6 +5,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <climits>
@@ -82,10 +83,7 @@ void communicate(const int sockfd, const string filename)
     // send/receive data to/from connection
     fstream fin;
     fin.open(filename, ios::in);
-    string input;
     char buf[PACKET_SIZE] = {0};
-    stringstream ss;
-    
     
     fd_set writefds;
     FD_ZERO(&writefds);
@@ -108,6 +106,7 @@ void communicate(const int sockfd, const string filename)
         else if(sel_res==0)
         {
             printError("Timeout! Server has not been able to receive data in more than 15 seconds.");
+            exit(1);
         }
         else
         {
@@ -151,6 +150,21 @@ Arguments parseArguments(int argc, char**argv)
     return args;
 }
 
+void setupEnvironment(const int sockfd)
+{
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if(flags<0)
+    {
+        printError("fcntl() failed 1.");
+        exit(1);
+    }
+    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK))
+    {
+        printError("fcntl() failed.");
+        exit(1);
+    }
+}
+
 int
 main(int argc, char **argv)
 {
@@ -158,6 +172,8 @@ main(int argc, char **argv)
     
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    
+   // setupEnvironment(sockfd);
 
   struct sockaddr_in serverAddr = createServerAddr(args.port, args.host);
 

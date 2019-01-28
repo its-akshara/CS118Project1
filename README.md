@@ -45,4 +45,5 @@ http://web.cs.ucla.edu/classes/spring17/cs118/hints/client.cpp
 http://web.cs.ucla.edu/classes/spring17/cs118/hints/multi-thread.cpp
 TA Slides
 http://beej.us/guide/bgnet/html/multi/syscalls.html#socket
-http://beej.us/guide/bgnet/html/multi/selectman.html  
+http://beej.us/guide/bgnet/html/multi/selectman.html
+https://stackoverflow.com/questions/1543466/how-do-i-change-a-tcp-socket-to-be-non-blocking
