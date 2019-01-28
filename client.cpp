@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -85,14 +86,38 @@ void communicate(const int sockfd, const string filename)
     char buf[PACKET_SIZE] = {0};
     stringstream ss;
     
+    
+    fd_set writefds;
+    FD_ZERO(&writefds);
+    FD_SET(sockfd, &writefds);
+    
+    struct timeval timeout;
+    timeout.tv_sec = 15;
+    timeout.tv_usec = 0;
+    
     do {
         fin.read(buf, PACKET_SIZE);
         
-        if (send(sockfd, buf, fin.gcount(), 0) == -1)
+        int sel_res = select(sockfd+1,NULL,&writefds,NULL,&timeout);
+        
+        if(sel_res == -1)
         {
-            printError("Unable to send data to server");
+            printError("select() failed.");
             exit(1);
         }
+        else if(sel_res==0)
+        {
+            printError("Timeout! Server has not been able to receive data in more than 15 seconds.");
+        }
+        else
+        {
+            if (send(sockfd, buf, fin.gcount(), 0) == -1)
+            {
+                printError("Unable to send data to server");
+                exit(1);
+            }
+        }
+
     } while (!fin.eof());
     fin.close();
 }

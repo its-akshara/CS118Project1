@@ -45,4 +45,4 @@ http://web.cs.ucla.edu/classes/spring17/cs118/hints/client.cpp
 http://web.cs.ucla.edu/classes/spring17/cs118/hints/multi-thread.cpp
 TA Slides
 http://beej.us/guide/bgnet/html/multi/syscalls.html#socket
-  
+http://beej.us/guide/bgnet/html/multi/selectman.html  
