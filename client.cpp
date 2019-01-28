@@ -1,16 +1,40 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <climits>
 #include <unistd.h>
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
+
+const int NUMBER_OF_ARGS = 3;
+const int PACKET_SIZE = 1024;
+
+struct Arguments
+{
+    int port;
+    string host;
+    string filename;
+};
+
+void printUsage()
+{
+    cerr<< "USAGE: ./client <HOSTNAME-OR-IP> <PORT> <FILENAME>\n";
+}
+
+void printError(string message)
+{
+    cerr<<"ERROR: ";
+    cerr<< message <<endl;
+}
 
 sockaddr_in createServerAddr(const int port, const string IP)
 {
@@ -52,47 +76,65 @@ void connectionSetup(const struct sockaddr_in clientAddr)
     ntohs(clientAddr.sin_port) << endl;
 }
 
-void communicate(const int sockfd)
+void communicate(const int sockfd, const string filename)
 {
     // send/receive data to/from connection
-    bool isEnd = false;
+    fstream fin;
+    fin.open(filename, ios::in);
     string input;
-    char buf[20] = {0};
+    char buf[PACKET_SIZE] = {0};
     stringstream ss;
     
-    while (!isEnd) {
-        memset(buf, '\0', sizeof(buf));
+    do {
+        fin.read(buf, PACKET_SIZE);
         
-        cout << "send: ";
-        cin >> input;
-        if (send(sockfd, input.c_str(), input.size(), 0) == -1) {
-            perror("send");
-            exit(4);
+        if (send(sockfd, buf, fin.gcount(), 0) == -1)
+        {
+            printError("Unable to send data to server");
+            exit(1);
         }
-        
-        
-        if (recv(sockfd, buf, 20, 0) == -1) {
-            perror("recv");
-            exit(5);
-        }
-        ss << buf << std::endl;
-        cout << "echo: ";
-        cout << buf << std::endl;
-        
-        if (ss.str() == "close\n")
-            break;
-        
-        ss.str("");
+    } while (!fin.eof());
+    fin.close();
+}
+
+Arguments parseArguments(int argc, char**argv)
+{
+    if(argc!=(NUMBER_OF_ARGS+1))
+    {
+        printError("Incorrect number of arguments");
+        printUsage();
+        exit(1);
     }
+    Arguments args;
+    
+    // host
+    // TODO: use getaddrinfo to check for hostname if(getaddrinfo )
+    args.host = argv[1];
+    
+    // port
+    long temp_port = strtol(argv[2],nullptr,10);
+    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
+    {
+        printError("Port number needs to be a valid integer greater than 1023.");
+        exit(1);
+    }
+    args.port = temp_port;
+    
+    // filename
+    args.filename = (string) argv[3];
+    
+    return args;
 }
 
 int
-main()
+main(int argc, char **argv)
 {
+  Arguments args = parseArguments(argc, argv);
+    
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-  struct sockaddr_in serverAddr = createServerAddr(40000, "127.0.0.1");
+  struct sockaddr_in serverAddr = createServerAddr(args.port, args.host);
 
   serverConnect(sockfd, serverAddr);
 
@@ -100,7 +142,7 @@ main()
   
   connectionSetup(clientAddr);
     
-  communicate(sockfd);
+  communicate(sockfd, args.filename);
 
   close(sockfd);
 
