@@ -121,6 +121,32 @@ void communicate(const int sockfd, const string filename)
     fin.close();
 }
 
+long parsePort(char **argv)
+{
+    long temp_port = strtol(argv[2],nullptr,10);
+    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
+    {
+        printError("Port number needs to be a valid integer greater than 1023.");
+        exit(1);
+    }
+    return temp_port;
+}
+
+string parseHost(char **argv)
+{
+    struct addrinfo hints, *info;
+    hints.ai_family = AF_INET;
+    
+    if(getaddrinfo(argv[1], NULL,&hints,&info))
+    {
+        printError("Host name is invalid.");
+        printUsage();
+        exit(1);
+    }
+    
+    return (string)argv[1];
+}
+
 Arguments parseArguments(int argc, char**argv)
 {
     if(argc!=(NUMBER_OF_ARGS+1))
@@ -133,16 +159,10 @@ Arguments parseArguments(int argc, char**argv)
     
     // host
     // TODO: use getaddrinfo to check for hostname if(getaddrinfo )
-    args.host = argv[1];
+    args.host = parseHost(argv);
     
     // port
-    long temp_port = strtol(argv[2],nullptr,10);
-    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
-    {
-        printError("Port number needs to be a valid integer greater than 1023.");
-        exit(1);
-    }
-    args.port = temp_port;
+    args.port = parsePort(argv);
     
     // filename
     args.filename = (string) argv[3];
