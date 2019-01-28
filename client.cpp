@@ -38,6 +38,12 @@ void printError(string message)
     cerr<< message <<endl;
 }
 
+void exitOnError(int sockfd)
+{
+    close(sockfd);
+    exit(1);
+}
+
 sockaddr_in createServerAddr(const int port, const string IP)
 {
     sockaddr_in serverAddr;
@@ -53,8 +59,9 @@ void serverConnect(const int sockfd, const struct sockaddr_in &serverAddr)
     // connect to the server
     if (connect(sockfd,(struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
     {
-        perror("connect");
-        exit(2);
+        printError("connect() failed.");
+        close(sockfd);
+        exit(1);
     }
 }
 
@@ -64,8 +71,8 @@ sockaddr_in createClientAddr(const int sockfd)
     socklen_t clientAddrLen = sizeof(clientAddr);
     if (getsockname(sockfd, (struct sockaddr *)&clientAddr, &clientAddrLen) == -1)
     {
-        perror("getsockname");
-        exit(3);
+        printError("getsockname() failed.");
+        exitOnError(sockfd);
     }
     return clientAddr;
 }
@@ -101,19 +108,19 @@ void communicate(const int sockfd, const string filename)
         if(sel_res == -1)
         {
             printError("select() failed.");
-            exit(1);
+            exitOnError(sockfd);
         }
         else if(sel_res==0)
         {
             printError("Timeout! Server has not been able to receive data in more than 15 seconds.");
-            exit(1);
+            exitOnError(sockfd);
         }
         else
         {
             if (send(sockfd, buf, fin.gcount(), 0) == -1)
             {
                 printError("Unable to send data to server");
-                exit(1);
+                exitOnError(sockfd);
             }
         }
 
@@ -168,7 +175,7 @@ Arguments parseArguments(int argc, char**argv)
     
     return args;
 }
-
+/*
 void setupEnvironment(const int sockfd)
 {
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -183,6 +190,7 @@ void setupEnvironment(const int sockfd)
         exit(1);
     }
 }
+*/
 
 int
 main(int argc, char **argv)

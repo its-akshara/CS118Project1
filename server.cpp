@@ -1,8 +1,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -45,6 +47,12 @@ long parsePort(char **argv)
     return temp_port;
 }
 
+void exitOnError(int sockfd)
+{
+    close(sockfd);
+    exit(1);
+}
+
 Arguments parseArguments(int argc, char**argv)
 {
     if(argc!=(NUMBER_OF_ARGS+1))
@@ -69,8 +77,8 @@ void setReuse(const int sockfd)
     // allow others to reuse the address
     int yes = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-        perror("setsockopt");
-        exit(1);
+        printError("setsockopt() failed.");
+        exitOnError(sockfd);
     }
 }
 
@@ -90,7 +98,7 @@ void bindSocket(const int sockfd, const sockaddr_in addr)
     if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
     {
         printError("bind() failed.");
-        exit(1);
+        exitOnError(sockfd);
     }
 }
 
@@ -99,7 +107,7 @@ void listenToSocket(const int sockfd)
     // set socket to listen status
     if (listen(sockfd, 1) == -1) {
         printError("listen() failed");
-        exit(1);
+        exitOnError(sockfd);
     }
 }
 
@@ -135,22 +143,50 @@ void communicate(int clientSockfd, string fileDir, int num)
     fstream fout;
     fout.open(getFileName(fileDir,num), ios::out);
     
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(clientSockfd, &readfds);
+    
+    struct timeval timeout;
+    timeout.tv_sec = 15;
+    timeout.tv_usec = 0;
+    
     while (!isEnd)
     {
         memset(buf, '\0', sizeof(buf));
         
+        int sel_res = select(clientSockfd+1,&readfds,NULL,NULL,&timeout);
+        
+        if(sel_res == -1)
+        {
+            fout.close();
+            printError("select() failed.");
+            exitOnError(clientSockfd);
+        }
+        else if(sel_res==0)
+        {
+            fout.close();
+            fout.open(getFileName(fileDir,num), ios::out);
+            fout<<"ERROR: Timeout! Server has not received data from client in more than 15 sec.";
+            fout.close();
+            printError("Timeout! Server has not received data from client in more than 15 sec.");
+            exitOnError(clientSockfd);
+        }
+ 
         int rec_res = recv(clientSockfd, buf, PACKET_SIZE, 0);
         
         if (rec_res == -1)
         {
             printError("Error in receiving data");
-            exit(1);
+            fout.close();
+            exitOnError(clientSockfd);
         }
         else if(!rec_res)
         {
             break;
         }
         
+
         fout.write(buf, rec_res);
         
     }
