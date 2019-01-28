@@ -9,8 +9,58 @@
 
 #include <iostream>
 #include <sstream>
+#include <climits>
 
 using namespace std;
+
+const int NUMBER_OF_ARGS = 2;
+
+struct Arguments
+{
+    int port;
+    string fileDir;
+};
+
+void printUsage()
+{
+    cerr<< "USAGE: ./server <PORT> <FILE-DIR>\n";
+}
+
+void printError(string message)
+{
+    cerr<<"ERROR: ";
+    cerr<< message <<endl;
+}
+
+long parsePort(char **argv)
+{
+    long temp_port = strtol(argv[1],nullptr,10);
+    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
+    {
+        printError("Port number needs to be a valid integer greater than 1023.");
+        exit(1);
+    }
+    return temp_port;
+}
+
+Arguments parseArguments(int argc, char**argv)
+{
+    if(argc!=(NUMBER_OF_ARGS+1))
+    {
+        printError("Incorrect number of arguments");
+        printUsage();
+        exit(1);
+    }
+    Arguments args;
+    
+    // port
+    args.port = parsePort(argv);
+    
+    // filename
+    args.fileDir = (string) argv[2];
+    
+    return args;
+}
 
 void setReuse(const int sockfd)
 {
@@ -100,9 +150,10 @@ void performTask(int clientSockfd)
     }
 }
 
-int
-main()
+int main(int argc, char **argv)
 {
+    Arguments args = parseArguments(argc, argv);
+    
   // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
