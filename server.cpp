@@ -10,8 +10,8 @@
 #include <unistd.h>
 
 #include <iostream>
-#include <sstream>
 #include <fstream>
+#include <csignal>
 #include <climits>
 
 using namespace std;
@@ -35,6 +35,20 @@ void printError(string message)
     cerr<<"ERROR: ";
     cerr<< message <<endl;
 }
+
+void sigHandler(int n)
+{
+    if(n == SIGTERM || n == SIGQUIT)
+    {
+        exit(0);
+    }
+    else
+    {
+        printError("Signal "+to_string(n)+" received.");
+        exit(1);
+    }
+}
+
 
 long parsePort(char **argv)
 {
@@ -193,13 +207,33 @@ void communicate(int clientSockfd, string fileDir, int num)
     fout.close();
 }
 
+void setupEnvironment(const int sockfd)
+{
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if(flags<0)
+    {
+        printError("fcntl() failed 1.");
+        exit(1);
+    }
+    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK)<0)
+    {
+        printError("fcntl() failed.");
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
     Arguments args = parseArguments(argc, argv);
     
-  // create a socket using TCP IP
+    signal(SIGTERM, sigHandler);
+    signal(SIGQUIT, sigHandler);
+    
+    // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
+    //setupEnvironment(sockfd);
+    
     setReuse(sockfd);
 
     struct sockaddr_in addr = createServerAddr(sockfd, args.port, "127.0.0.1");

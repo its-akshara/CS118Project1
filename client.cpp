@@ -175,7 +175,7 @@ Arguments parseArguments(int argc, char**argv)
     
     return args;
 }
-/*
+
 void setupEnvironment(const int sockfd)
 {
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -184,13 +184,12 @@ void setupEnvironment(const int sockfd)
         printError("fcntl() failed 1.");
         exit(1);
     }
-    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK))
+    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK)<0)
     {
         printError("fcntl() failed.");
         exit(1);
     }
 }
-*/
 
 int
 main(int argc, char **argv)
@@ -200,7 +199,7 @@ main(int argc, char **argv)
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     
-   // setupEnvironment(sockfd);
+  // setupEnvironment(sockfd);
 
   struct sockaddr_in serverAddr = createServerAddr(args.port, args.host);
 

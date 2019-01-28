@@ -48,3 +48,4 @@ http://beej.us/guide/bgnet/html/multi/syscalls.html#socket
 http://beej.us/guide/bgnet/html/multi/selectman.html
 https://stackoverflow.com/questions/1543466/how-do-i-change-a-tcp-socket-to-be-non-blocking
 https://github.com/angrave/SystemProgramming/wiki/Networking,-Part-2:-Using-getaddrinfo
+https://www.scottklement.com/rpg/socktut/nonblocking.html
