@@ -12,17 +12,17 @@
 
 using namespace std;
 
-sockaddr_in createServerAddr(int port, string IP)
+sockaddr_in createServerAddr(const int port, const string IP)
 {
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(40000);     // short, network byte order
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_port = htons(port);     // short, network byte order
+    serverAddr.sin_addr.s_addr = inet_addr(IP.c_str());
     memset(serverAddr.sin_zero, '\0', sizeof(serverAddr.sin_zero));
     return serverAddr;
 }
 
-void serverConnect(int sockfd, struct sockaddr_in &serverAddr)
+void serverConnect(const int sockfd, const struct sockaddr_in &serverAddr)
 {
     // connect to the server
     if (connect(sockfd,(struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
@@ -32,7 +32,7 @@ void serverConnect(int sockfd, struct sockaddr_in &serverAddr)
     }
 }
 
-sockaddr_in createClientAddr(int sockfd)
+sockaddr_in createClientAddr(const int sockfd)
 {
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
@@ -44,7 +44,7 @@ sockaddr_in createClientAddr(int sockfd)
     return clientAddr;
 }
 
-void connectionSetup(struct sockaddr_in clientAddr)
+void connectionSetup(const struct sockaddr_in clientAddr)
 {
     char ipstr[INET_ADDRSTRLEN] = {'\0'};
     inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
@@ -52,7 +52,7 @@ void connectionSetup(struct sockaddr_in clientAddr)
     ntohs(clientAddr.sin_port) << endl;
 }
 
-void communicate(int sockfd)
+void communicate(const int sockfd)
 {
     // send/receive data to/from connection
     bool isEnd = false;
