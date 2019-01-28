@@ -9,11 +9,13 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <climits>
 
 using namespace std;
 
 const int NUMBER_OF_ARGS = 2;
+const int PACKET_SIZE = 1024;
 
 struct Arguments
 {
@@ -87,8 +89,8 @@ void bindSocket(const int sockfd, const sockaddr_in addr)
 {
     if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
     {
-        perror("bind");
-        exit(2);
+        printError("bind() failed.");
+        exit(1);
     }
 }
 
@@ -96,8 +98,8 @@ void listenToSocket(const int sockfd)
 {
     // set socket to listen status
     if (listen(sockfd, 1) == -1) {
-        perror("listen");
-        exit(3);
+        printError("listen() failed");
+        exit(1);
     }
 }
 
@@ -109,8 +111,8 @@ int establishConnection(const int sockfd)
     int clientSockfd = accept(sockfd, (struct sockaddr*)&clientAddr, &clientAddrSize);
     
     if (clientSockfd == -1) {
-        perror("accept");
-        exit(4);
+        printError("accept() failed.");
+        exit(1);
     }
     
     char ipstr[INET_ADDRSTRLEN] = {'\0'};
@@ -120,34 +122,39 @@ int establishConnection(const int sockfd)
     return clientSockfd;
 }
 
-void performTask(int clientSockfd)
+string getFileName(string fileDir, int num)
+{
+    return fileDir +"/" + to_string(num) + ".file";
+}
+
+void communicate(int clientSockfd, string fileDir, int num)
 {
     // read/write data from/into the connection
     bool isEnd = false;
-    char buf[20] = {0};
-    stringstream ss;
+    char buf[PACKET_SIZE] = {0};
+    fstream fout;
+    fout.open(getFileName(fileDir,num), ios::out);
     
-    while (!isEnd) {
+    while (!isEnd)
+    {
         memset(buf, '\0', sizeof(buf));
         
-        if (recv(clientSockfd, buf, 20, 0) == -1) {
-            perror("recv");
-            exit(5);
+        int rec_res = recv(clientSockfd, buf, PACKET_SIZE, 0);
+        
+        if (rec_res == -1)
+        {
+            printError("Error in receiving data");
+            exit(1);
         }
-        
-        ss << buf <<endl;
-        cout << buf << endl;
-        
-        if (send(clientSockfd, buf, 20, 0) == -1) {
-            perror("send");
-            exit(6);
-        }
-        
-        if (ss.str() == "close\n")
+        else if(!rec_res)
+        {
             break;
+        }
         
-        ss.str("");
+        fout.write(buf, rec_res);
+        
     }
+    fout.close();
 }
 
 int main(int argc, char **argv)
@@ -159,7 +166,7 @@ int main(int argc, char **argv)
 
     setReuse(sockfd);
 
-    struct sockaddr_in addr = createServerAddr(sockfd, 40000, "127.0.0.1");
+    struct sockaddr_in addr = createServerAddr(sockfd, args.port, "127.0.0.1");
 
     bindSocket(sockfd, addr);
     
@@ -167,7 +174,7 @@ int main(int argc, char **argv)
 
     int clientSockfd = establishConnection(sockfd);
 
-    performTask(clientSockfd);
+    communicate(clientSockfd, args.fileDir, 1);
 
   close(clientSockfd);
 

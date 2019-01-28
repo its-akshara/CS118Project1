@@ -163,7 +163,6 @@ Arguments parseArguments(int argc, char**argv)
     
     // port
     args.port = parsePort(argv);
-    
     // filename
     args.filename = (string) argv[3];
     
