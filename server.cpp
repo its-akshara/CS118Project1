@@ -120,7 +120,7 @@ struct sockaddr_in createServerAddr(const int sockfd, const int port, const stri
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);     // short, network byte order
-    addr.sin_addr.s_addr = inet_addr(IP.c_str());
+    addr.sin_addr.s_addr = INADDR_ANY;
     memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
     return addr;
 }
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
     
     setReuse(sockfd);
 
-    struct sockaddr_in addr = createServerAddr(sockfd, args.port, "127.0.0.1");
+    struct sockaddr_in addr = createServerAddr(sockfd, args.port);
 
     bindSocket(sockfd, addr);
     
