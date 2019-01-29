@@ -131,7 +131,7 @@ void communicate(const int sockfd, const string filename)
 long parsePort(char **argv)
 {
     long temp_port = strtol(argv[2],nullptr,10);
-    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
+    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024)|| temp_port>65535)
     {
         printError("Port number needs to be a valid integer greater than 1023.");
         exit(1);
@@ -165,7 +165,6 @@ Arguments parseArguments(int argc, char**argv)
     Arguments args;
     
     // host
-    // TODO: use getaddrinfo to check for hostname if(getaddrinfo )
     args.host = parseHost(argv);
     
     // port
@@ -178,17 +177,17 @@ Arguments parseArguments(int argc, char**argv)
 
 void setupEnvironment(const int sockfd)
 {
-    int flags = fcntl(sockfd, F_GETFL, 0);
+    /*int flags = fcntl(sockfd, F_GETFL, 0);
     if(flags<0)
     {
         printError("fcntl() failed 1.");
         exit(1);
     }
-    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK)<0)
+    if(fcntl(sockfd,F_SETFL,O_NONBLOCK)<0)
     {
         printError("fcntl() failed.");
         exit(1);
-    }
+    }*/
 }
 
 int
@@ -199,7 +198,7 @@ main(int argc, char **argv)
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     
-  // setupEnvironment(sockfd);
+  setupEnvironment(sockfd);
 
   struct sockaddr_in serverAddr = createServerAddr(args.port, args.host);
 

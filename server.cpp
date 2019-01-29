@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -53,7 +54,7 @@ void sigHandler(int n)
 long parsePort(char **argv)
 {
     long temp_port = strtol(argv[1],nullptr,10);
-    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024))
+    if(temp_port == 0 || temp_port==LONG_MAX || temp_port==LONG_MIN || (temp_port<1024) || temp_port>65535)
     {
         printError("Port number needs to be a valid integer greater than 1023.");
         exit(1);
@@ -65,6 +66,21 @@ void exitOnError(int sockfd)
 {
     close(sockfd);
     exit(1);
+}
+
+void createDirIfNotExists(string path)
+{
+    struct stat s;
+    
+    if(!(stat(path.c_str(), &s) == 0 &&S_ISDIR(s.st_mode)))
+    {
+        if(mkdir(path.c_str(), 0777)<0)
+        {
+            printError("Unable to create directory.");
+            exit(1);
+        }
+    
+    }
 }
 
 Arguments parseArguments(int argc, char**argv)
@@ -80,7 +96,8 @@ Arguments parseArguments(int argc, char**argv)
     // port
     args.port = parsePort(argv);
     
-    // filename
+    // directory
+    createDirIfNotExists(string(argv[2]));
     args.fileDir = (string) argv[2];
     
     return args;
@@ -209,17 +226,17 @@ void communicate(int clientSockfd, string fileDir, int num)
 
 void setupEnvironment(const int sockfd)
 {
-    int flags = fcntl(sockfd, F_GETFL, 0);
+    /*int flags = fcntl(sockfd, F_GETFL, 0);
     if(flags<0)
     {
         printError("fcntl() failed 1.");
         exit(1);
     }
-    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK)<0)
+    if(fcntl(sockfd,F_SETFL,O_NONBLOCK)<0)
     {
         printError("fcntl() failed.");
         exit(1);
-    }
+    }*/
 }
 
 int main(int argc, char **argv)
@@ -232,7 +249,7 @@ int main(int argc, char **argv)
     // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-    //setupEnvironment(sockfd);
+    setupEnvironment(sockfd);
     
     setReuse(sockfd);
 
