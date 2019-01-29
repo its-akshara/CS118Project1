@@ -206,7 +206,7 @@ void communicate(int clientSockfd, string fileDir, int num)
  
         int rec_res = recv(clientSockfd, buf, PACKET_SIZE, 0);
         
-        if (rec_res == -1)
+        if (rec_res == -1 && errno!=EWOULDBLOCK)
         {
             printError("Error in receiving data");
             fout.close();
@@ -226,7 +226,7 @@ void communicate(int clientSockfd, string fileDir, int num)
 
 void setupEnvironment(const int sockfd)
 {
-    /*int flags = fcntl(sockfd, F_GETFL, 0);
+    int flags = fcntl(sockfd, F_GETFL, 0);
     if(flags<0)
     {
         printError("fcntl() failed 1.");
@@ -236,7 +236,7 @@ void setupEnvironment(const int sockfd)
     {
         printError("fcntl() failed.");
         exit(1);
-    }*/
+    }
 }
 
 int main(int argc, char **argv)
@@ -249,7 +249,7 @@ int main(int argc, char **argv)
     // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-    setupEnvironment(sockfd);
+    
     
     setReuse(sockfd);
 
@@ -260,6 +260,8 @@ int main(int argc, char **argv)
     listenToSocket(sockfd);
 
     int clientSockfd = establishConnection(sockfd);
+    
+    setupEnvironment(clientSockfd);
 
     communicate(clientSockfd, args.fileDir, 1);
 

@@ -50,3 +50,5 @@ https://stackoverflow.com/questions/1543466/how-do-i-change-a-tcp-socket-to-be-n
 https://github.com/angrave/SystemProgramming/wiki/Networking,-Part-2:-Using-getaddrinfo
 https://www.scottklement.com/rpg/socktut/nonblocking.html
 https://stackoverflow.com/questions/3828192/checking-if-a-directory-exists-in-unix-system-call
+https://www.geeksforgeeks.org/socket-programming-in-cc-handling-multiple-clients-on-server-without-multi-threading/
+https://stackoverflow.com/questions/10204134/tcp-connect-error-115-operation-in-progress-what-is-the-cause

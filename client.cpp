@@ -57,7 +57,7 @@ sockaddr_in createServerAddr(const int port, const string IP)
 void serverConnect(const int sockfd, const struct sockaddr_in &serverAddr)
 {
     // connect to the server
-    if (connect(sockfd,(struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
+    if (connect(sockfd,(struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1 && errno!=EINPROGRESS)
     {
         printError("connect() failed.");
         close(sockfd);
@@ -117,7 +117,7 @@ void communicate(const int sockfd, const string filename)
         }
         else
         {
-            if (send(sockfd, buf, fin.gcount(), 0) == -1)
+            if (send(sockfd, buf, fin.gcount(), MSG_NOSIGNAL) == -1)
             {
                 printError("Unable to send data to server");
                 exitOnError(sockfd);
@@ -177,7 +177,7 @@ Arguments parseArguments(int argc, char**argv)
 
 void setupEnvironment(const int sockfd)
 {
-    /*int flags = fcntl(sockfd, F_GETFL, 0);
+    int flags = fcntl(sockfd, F_GETFL, 0);
     if(flags<0)
     {
         printError("fcntl() failed 1.");
@@ -187,7 +187,7 @@ void setupEnvironment(const int sockfd)
     {
         printError("fcntl() failed.");
         exit(1);
-    }*/
+    }
 }
 
 int
