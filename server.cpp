@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <iostream>
 #include <fstream>
@@ -257,6 +258,7 @@ int main(int argc, char **argv)
 
     bindSocket(sockfd, addr);
     
+    //start implement multiple
     listenToSocket(sockfd);
 
     int clientSockfd = establishConnection(sockfd);
@@ -265,7 +267,10 @@ int main(int argc, char **argv)
 
     communicate(clientSockfd, args.fileDir, 1);
 
-  close(clientSockfd);
+    close(clientSockfd);
+    //end implement multiple
+    
+    close(sockfd);
 
   return 0;
 }

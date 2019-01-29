@@ -150,8 +150,10 @@ string parseHost(char **argv)
         printUsage();
         exit(1);
     }
+    char addrbuf[INET_ADDRSTRLEN + 1];
+    const char *addr = inet_ntop(info->ai_family, &(((struct sockaddr_in *)info->ai_addr)->sin_addr),addrbuf,sizeof(addrbuf));
     
-    return (string)argv[1];
+    return (string)addr;
 }
 
 Arguments parseArguments(int argc, char**argv)
