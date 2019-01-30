@@ -252,6 +252,13 @@ void setupEnvironment(const int sockfd)
     }
 }
 
+void worker(int clientSockfd, int n, string fileDir)
+{
+    setupEnvironment(clientSockfd);
+    communicate(clientSockfd, fileDir, n);
+    close(clientSockfd);
+}
+
 int main(int argc, char **argv)
 {
     int client_number  = 1;
@@ -271,7 +278,6 @@ int main(int argc, char **argv)
     
     //start implement multiple
     vector<thread> connections;
-    vector<int> clientSockfds;
     
     // set socket to listen status
     while (true)
@@ -291,18 +297,17 @@ int main(int argc, char **argv)
                 printError("accept() failed.");
                 exit(1);
             }
+           connections.push_back(thread(worker, clientSockfd, client_number, args.fileDir));
             
-            clientSockfds.push_back(clientSockfd);
-            setupEnvironment(clientSockfds[client_number-1]);
-            communicate(clientSockfds[client_number-1], args.fileDir, client_number);
-            close(clientSockfds[client_number-1]);
             client_number++;
         }
     }
 
     //end implement multiple
-    
-    // closeSockets(clientSockfds); //maybe have each, close itself
+    for(int i = 0; i<client_number; i++)
+    {
+        connections[i].join();
+    }
     close(sockfd);
 
   return 0;
