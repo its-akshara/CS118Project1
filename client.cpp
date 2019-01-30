@@ -81,8 +81,6 @@ void connectionSetup(const struct sockaddr_in clientAddr)
 {
     char ipstr[INET_ADDRSTRLEN] = {'\0'};
     inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-    cout << "Set up a connection from: " << ipstr << ":" <<
-    ntohs(clientAddr.sin_port) << endl;
 }
 
 void communicate(const int sockfd, const string filename)

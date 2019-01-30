@@ -9,16 +9,20 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <iostream>
 #include <fstream>
+#include <iostream>
+#include <thread>
+#include <vector>
+#include <chrono>
 #include <csignal>
 #include <climits>
 
 using namespace std;
 
 const int NUMBER_OF_ARGS = 2;
+const int MAX_CLIENT_NUMBER = 30;
 const int PACKET_SIZE = 1024;
 
 struct Arguments
@@ -114,7 +118,7 @@ void setReuse(const int sockfd)
     }
 }
 
-struct sockaddr_in createServerAddr(const int sockfd, const int port, const string IP)
+struct sockaddr_in createServerAddr(const int sockfd, const int port)
 {
     // bind address to socket
     struct sockaddr_in addr;
@@ -157,8 +161,7 @@ int establishConnection(const int sockfd)
     
     char ipstr[INET_ADDRSTRLEN] = {'\0'};
     inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-    cout << "Accept a connection from: " << ipstr << ":" <<
-    ntohs(clientAddr.sin_port) << endl;
+    
     return clientSockfd;
 }
 
@@ -225,6 +228,15 @@ void communicate(int clientSockfd, string fileDir, int num)
     fout.close();
 }
 
+void closeSockets(vector<int> fds)
+{
+    int n = fds.size();
+    for(int i = 0; i<n; i++)
+    {
+        close(fds[i]);
+    }
+}
+
 void setupEnvironment(const int sockfd)
 {
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -242,6 +254,7 @@ void setupEnvironment(const int sockfd)
 
 int main(int argc, char **argv)
 {
+    int client_number  = 1;
     Arguments args = parseArguments(argc, argv);
     
     signal(SIGTERM, sigHandler);
@@ -250,8 +263,6 @@ int main(int argc, char **argv)
     // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-    
-    
     setReuse(sockfd);
 
     struct sockaddr_in addr = createServerAddr(sockfd, args.port);
@@ -259,17 +270,39 @@ int main(int argc, char **argv)
     bindSocket(sockfd, addr);
     
     //start implement multiple
-    listenToSocket(sockfd);
-
-    int clientSockfd = establishConnection(sockfd);
+    vector<thread> connections;
+    vector<int> clientSockfds;
     
-    setupEnvironment(clientSockfd);
+    // set socket to listen status
+    while (true)
+    {
+        if (listen(sockfd, MAX_CLIENT_NUMBER) == -1) {
+            printError("listen() failed");
+            exitOnError(sockfd);
+        }
+        else
+        {
+            // accept a new connection
+            struct sockaddr_in clientAddr;
+            socklen_t clientAddrSize = sizeof(clientAddr);
+            int clientSockfd = accept(sockfd, (struct sockaddr*)&clientAddr, &clientAddrSize);
+            
+            if (clientSockfd == -1) {
+                printError("accept() failed.");
+                exit(1);
+            }
+            
+            clientSockfds.push_back(clientSockfd);
+            setupEnvironment(clientSockfds[client_number-1]);
+            communicate(clientSockfds[client_number-1], args.fileDir, client_number);
+            close(clientSockfds[client_number-1]);
+            client_number++;
+        }
+    }
 
-    communicate(clientSockfd, args.fileDir, 1);
-
-    close(clientSockfd);
     //end implement multiple
     
+    // closeSockets(clientSockfds); //maybe have each, close itself
     close(sockfd);
 
   return 0;
