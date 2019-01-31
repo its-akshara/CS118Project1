@@ -57,12 +57,34 @@ sockaddr_in createServerAddr(const int port, const string IP)
 void serverConnect(const int sockfd, const struct sockaddr_in &serverAddr)
 {
     // connect to the server
+    struct timeval timeout;
+    timeout.tv_sec = 15;
+    timeout.tv_usec = 0;
+    
     if (connect(sockfd,(struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1 && errno!=EINPROGRESS)
     {
         printError("connect() failed.");
         close(sockfd);
         exit(1);
     }
+    fd_set writefds;
+    FD_ZERO(&writefds);
+    FD_SET(sockfd, &writefds);
+    
+    int res = select(sockfd + 1, NULL, &writefds, NULL, &timeout);
+    
+    if(res == -1)
+    {
+        printError("select() failed.");
+        exitOnError(sockfd);
+    }
+    else if(res==0)
+    {
+        printError("Timeout! Client has not been able to connect to the server in more than 15 seconds.");
+        exitOnError(sockfd);
+    }
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
 }
 
 sockaddr_in createClientAddr(const int sockfd)
@@ -91,15 +113,18 @@ void communicate(const int sockfd, const string filename)
     char buf[PACKET_SIZE] = {0};
     
     fd_set writefds;
-    FD_ZERO(&writefds);
-    FD_SET(sockfd, &writefds);
     
     struct timeval timeout;
-    timeout.tv_sec = 15;
+    timeout.tv_sec = 10;
     timeout.tv_usec = 0;
     
     do {
         fin.read(buf, PACKET_SIZE);
+        
+        FD_CLR(sockfd,&writefds);
+        FD_ZERO(&writefds);
+        FD_SET(sockfd, &writefds);
+        
         
         int sel_res = select(sockfd+1,NULL,&writefds,NULL,&timeout);
         
@@ -110,16 +135,18 @@ void communicate(const int sockfd, const string filename)
         }
         else if(sel_res==0)
         {
-            printError("Timeout! Server has not been able to receive data in more than 15 seconds.");
+            printError("Timeout! Client has not been able to send data to the server in more than 15 seconds.");
             exitOnError(sockfd);
         }
         else
         {
-            if (send(sockfd, buf, fin.gcount(), MSG_NOSIGNAL) == -1)
+           if (send(sockfd, buf, fin.gcount(), MSG_NOSIGNAL) == -1)
             {
                 printError("Unable to send data to server");
                 exitOnError(sockfd);
             }
+            timeout.tv_sec = 10;
+            timeout.tv_usec = 0;
         }
 
     } while (!fin.eof());
@@ -183,7 +210,7 @@ void setupEnvironment(const int sockfd)
         printError("fcntl() failed 1.");
         exit(1);
     }
-    if(fcntl(sockfd,F_SETFL,O_NONBLOCK)<0)
+    if(fcntl(sockfd,F_SETFL,O_NONBLOCK|flags)<0)
     {
         printError("fcntl() failed.");
         exit(1);

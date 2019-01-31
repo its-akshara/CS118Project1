@@ -14,7 +14,6 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
-#include <vector>
 #include <chrono>
 #include <csignal>
 #include <climits>
@@ -22,7 +21,7 @@
 using namespace std;
 
 const int NUMBER_OF_ARGS = 2;
-const int MAX_CLIENT_NUMBER = 30;
+const int MAX_CLIENT_NUMBER = 12;
 const int PACKET_SIZE = 1024;
 
 struct Arguments
@@ -84,7 +83,7 @@ void createDirIfNotExists(string path)
             printError("Unable to create directory.");
             exit(1);
         }
-    
+        
     }
 }
 
@@ -138,33 +137,6 @@ void bindSocket(const int sockfd, const sockaddr_in addr)
     }
 }
 
-void listenToSocket(const int sockfd)
-{
-    // set socket to listen status
-    if (listen(sockfd, 1) == -1) {
-        printError("listen() failed");
-        exitOnError(sockfd);
-    }
-}
-
-int establishConnection(const int sockfd)
-{
-    // accept a new connection
-    struct sockaddr_in clientAddr;
-    socklen_t clientAddrSize = sizeof(clientAddr);
-    int clientSockfd = accept(sockfd, (struct sockaddr*)&clientAddr, &clientAddrSize);
-    
-    if (clientSockfd == -1) {
-        printError("accept() failed.");
-        exit(1);
-    }
-    
-    char ipstr[INET_ADDRSTRLEN] = {'\0'};
-    inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-    
-    return clientSockfd;
-}
-
 string getFileName(string fileDir, int num)
 {
     return fileDir +"/" + to_string(num) + ".file";
@@ -179,8 +151,6 @@ void communicate(int clientSockfd, string fileDir, int num)
     fout.open(getFileName(fileDir,num), ios::out);
     
     fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(clientSockfd, &readfds);
     
     struct timeval timeout;
     timeout.tv_sec = 15;
@@ -189,6 +159,10 @@ void communicate(int clientSockfd, string fileDir, int num)
     while (!isEnd)
     {
         memset(buf, '\0', sizeof(buf));
+        
+        FD_CLR(clientSockfd,&readfds);
+        FD_ZERO(&readfds);
+        FD_SET(clientSockfd, &readfds);
         
         int sel_res = select(clientSockfd+1,&readfds,NULL,NULL,&timeout);
         
@@ -207,9 +181,10 @@ void communicate(int clientSockfd, string fileDir, int num)
             printError("Timeout! Server has not received data from client in more than 15 sec.");
             exitOnError(clientSockfd);
         }
- 
-        int rec_res = recv(clientSockfd, buf, PACKET_SIZE, 0);
         
+        int rec_res = recv(clientSockfd, buf, PACKET_SIZE, 0);
+        timeout.tv_sec = 15;
+        timeout.tv_usec = 0;
         if (rec_res == -1 && errno!=EWOULDBLOCK)
         {
             printError("Error in receiving data");
@@ -221,20 +196,11 @@ void communicate(int clientSockfd, string fileDir, int num)
             break;
         }
         
-
+        
         fout.write(buf, rec_res);
         
     }
     fout.close();
-}
-
-void closeSockets(vector<int> fds)
-{
-    int n = fds.size();
-    for(int i = 0; i<n; i++)
-    {
-        close(fds[i]);
-    }
 }
 
 void setupEnvironment(const int sockfd)
@@ -242,10 +208,10 @@ void setupEnvironment(const int sockfd)
     int flags = fcntl(sockfd, F_GETFL, 0);
     if(flags<0)
     {
-        printError("fcntl() failed 1.");
+        printError("fcntl() failed");
         exit(1);
     }
-    if(fcntl(sockfd,F_SETFL,O_NONBLOCK)<0)
+    if(fcntl(sockfd,F_SETFL,flags|O_NONBLOCK)<0)
     {
         printError("fcntl() failed.");
         exit(1);
@@ -269,20 +235,18 @@ int main(int argc, char **argv)
     
     // create a socket using TCP IP
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
     setReuse(sockfd);
-
-    struct sockaddr_in addr = createServerAddr(sockfd, args.port);
-
-    bindSocket(sockfd, addr);
+    setupEnvironment(sockfd);
     
-    //start implement multiple
-    vector<thread> connections;
+    struct sockaddr_in addr = createServerAddr(sockfd, args.port);
+    
+    bindSocket(sockfd, addr);
     
     // set socket to listen status
     while (true)
     {
-        if (listen(sockfd, MAX_CLIENT_NUMBER) == -1) {
+        if (listen(sockfd, MAX_CLIENT_NUMBER) == -1)
+        {
             printError("listen() failed");
             exitOnError(sockfd);
         }
@@ -293,22 +257,24 @@ int main(int argc, char **argv)
             socklen_t clientAddrSize = sizeof(clientAddr);
             int clientSockfd = accept(sockfd, (struct sockaddr*)&clientAddr, &clientAddrSize);
             
-            if (clientSockfd == -1) {
+            if (clientSockfd == -1 && errno!=EWOULDBLOCK) {
                 printError("accept() failed.");
                 exit(1);
             }
-           connections.push_back(thread(worker, clientSockfd, client_number, args.fileDir));
+            else if(clientSockfd==-1)
+            {
+                continue;
+            }
+            
+            thread(worker, clientSockfd, client_number, args.fileDir).detach();
             
             client_number++;
         }
     }
+    
+//    
 
-    //end implement multiple
-    for(int i = 0; i<client_number; i++)
-    {
-        connections[i].join();
-    }
     close(sockfd);
-
-  return 0;
+    
+    return 0;
 }
